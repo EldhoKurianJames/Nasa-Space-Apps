@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Globe from 'react-globe.gl';
 import WeatherOverlay from './WeatherOverlay';
 import { useMission } from '../../contexts/MissionContext';
+import { searchNasaImages } from '../../services/nasaService';
 
 const ViewerContainer = styled.div`
   flex: 1;
@@ -187,11 +188,114 @@ const StatusBar = styled.div`
 `;
 
 const EarthViewer = ({ character, selectedLocation, setSelectedLocation }) => {
+  const [locations, setLocations] = useState([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showWeather, setShowWeather] = useState(false);
   const [showMissionPrompt, setShowMissionPrompt] = useState(null);
   const globeRef = useRef();
-  const { completeMission, completedMissions } = useMission();
+    const { completeMission, completedMissions } = useMission();
+
+  useEffect(() => {
+    const fetchNasaData = async () => {
+      const imageItems = await searchNasaImages('earth from cupola');
+
+      const initialLocations = [
+        {
+          name: 'Amazon Rainforest',
+          coordinates: { lat: -3.4653, lng: -62.2159 },
+          description: 'The lungs of our planet, producing 20% of the world\'s oxygen.',
+          facts: [
+            'NASA\'s MODIS sensor provides daily data for near-real-time deforestation alerts.',
+            'Brazil\'s DETER system uses this data to dispatch enforcement teams within a day.',
+            'Satellite monitoring has led deforesters to create smaller, harder-to-detect clearings.'
+          ],
+          nblTraining: {
+            title: 'Rainforest Monitoring Training',
+            description: 'Practice using observation tools to monitor deforestation patterns',
+            objective: 'Collect 5 clear images of deforestation areas',
+            duration: '15 minutes',
+            skills: ['Camera operation', 'Data collection', 'Environmental monitoring']
+          }
+        },
+        {
+          name: 'Sahara Desert',
+          coordinates: { lat: 23.4162, lng: 25.6628 },
+          description: 'The world\'s largest hot desert, visible from space due to its vast golden expanse.',
+          facts: [
+            'The Richat Structure, or "Eye of the Sahara," is a 40km-wide geological feature used as a landmark by astronauts.',
+            'Once thought to be an impact crater, it is now considered a deeply eroded geological dome.',
+            'Students can take photos of Earth from the ISS using the Sally Ride EarthKAM camera.'
+          ],
+          nblTraining: {
+            title: 'Desert Landmark Navigation',
+            description: 'Practice using desert landmarks for navigation',
+            objective: 'Identify and mark 3 key landmarks from orbit',
+            duration: '10 minutes',
+            skills: ['Navigation', 'Landmark identification', 'Spatial awareness']
+          }
+        },
+        {
+            name: 'Great Barrier Reef',
+            coordinates: { lat: -18.2871, lng: 147.6992 },
+            description: 'The world\'s largest coral reef system, visible from space.',
+            facts: [
+            'NASA\'s CORAL mission uses airborne instruments to survey the health of the reef.',
+            'Astronauts on the ISS photograph the reef to help monitor its vast ecosystem.',
+            'It is a composite of over 2,900 individual reefs and 900 islands.'
+          ],
+        },
+        {
+            name: 'Himalayas',
+            coordinates: { lat: 27.9881, lng: 86.9250 },
+            description: 'The world\'s highest mountain range, including Mount Everest.',
+            facts: [
+            'Astronauts photograph the Himalayas from an altitude of over 260 miles.',
+            'Instruments on the ISS, like COWVR, help monitor weather patterns in the region.',
+            'The range is made up of three parallel mountain ranges stretching over 1,800 miles.'
+          ],
+        },
+        {
+            name: 'Aurora Borealis',
+            coordinates: { lat: 64.2008, lng: -149.4937 },
+            description: 'The Northern Lights, a spectacular natural light display.',
+            facts: [
+            'Astronauts on the ISS often photograph auroras from the Cupola window.',
+            'The frequency and intensity of auroras are linked to the 11-year solar cycle.',
+            'They are caused by energized particles from the Sun hitting Earth\'s upper atmosphere.'
+          ],
+        },
+        {
+            name: 'Pacific Ocean',
+            coordinates: { lat: 0, lng: -140 },
+            description: 'The vast Pacific Ocean, Earth\'s largest body of water.',
+            facts: [
+            'The ISS orbits over the Pacific multiple times a day, enabling continuous monitoring.',
+            'Instruments like EMIT on the ISS can track pollution and wastewater plumes.',
+            'The ISS deploys CubeSats to gather data on climate patterns and ocean phenomena.'
+          ],
+        }
+      ];
+
+      // Replace image URLs with images from NASA API
+      if (imageItems.length > 0) {
+        const updatedLocations = initialLocations.map((loc, index) => ({
+          ...loc,
+          imageUrl: imageItems[index % imageItems.length].links[0].href
+        }));
+        setLocations(updatedLocations);
+      } else {
+        // Fallback to old URLs if API fails
+        const fallbackLocations = initialLocations.map(loc => ({
+            ...loc,
+            imageUrl: 'https://images.unsplash.com/photo-1446776811953-b23d5795b4e7?w=800' // A generic fallback
+        }));
+        setLocations(fallbackLocations);
+      }
+    };
+
+    fetchNasaData();
+  }, []);
+
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -307,90 +411,7 @@ const EarthViewer = ({ character, selectedLocation, setSelectedLocation }) => {
     window.dispatchEvent(missionCompleteEvent);
   };
 
-  const locations = useMemo(() => [
-    // ... (same locations as before)
-    {
-      name: 'Amazon Rainforest',
-      coordinates: { lat: -3.4653, lng: -62.2159 },
-      description: 'The lungs of our planet, producing 20% of the world\'s oxygen.',
-      facts: [
-        'NASA\'s MODIS sensor provides daily data for near-real-time deforestation alerts.',
-        'Brazil\'s DETER system uses this data to dispatch enforcement teams within a day.',
-        'Satellite monitoring has led deforesters to create smaller, harder-to-detect clearings.'
-      ],
-      imageUrl: 'https://www.nasa.gov/wp-content/uploads/2020/12/iss064e014990.jpg',
-      nblTraining: {
-        title: 'Rainforest Monitoring Training',
-        description: 'Practice using observation tools to monitor deforestation patterns',
-        objective: 'Collect 5 clear images of deforestation areas',
-        duration: '15 minutes',
-        skills: ['Camera operation', 'Data collection', 'Environmental monitoring']
-      }
-    },
-    {
-      name: 'Sahara Desert',
-      coordinates: { lat: 23.4162, lng: 25.6628 },
-      description: 'The world\'s largest hot desert, visible from space due to its vast golden expanse.',
-      facts: [
-        'The Richat Structure, or "Eye of the Sahara," is a 40km-wide geological feature used as a landmark by astronauts.',
-        'Once thought to be an impact crater, it is now considered a deeply eroded geological dome.',
-        'Students can take photos of Earth from the ISS using the Sally Ride EarthKAM camera.'
-      ],
-      imageUrl: 'https://d2pn8kiwq2w21t.cloudfront.net/images/images.ctfassets.net/cnu0m8re1nob/5V3p84S3v515l1sX2s0p5G/a6f1f124b65d03c9b28a514864f7596f/saharadesert.jpg',
-      nblTraining: {
-        title: 'Desert Landmark Navigation',
-        description: 'Practice using desert landmarks for navigation',
-        objective: 'Identify and mark 3 key landmarks from orbit',
-        duration: '10 minutes',
-        skills: ['Navigation', 'Landmark identification', 'Spatial awareness']
-      }
-    },
-    {
-        name: 'Great Barrier Reef',
-        coordinates: { lat: -18.2871, lng: 147.6992 },
-        description: 'The world\'s largest coral reef system, visible from space.',
-        facts: [
-        'NASA\'s CORAL mission uses airborne instruments to survey the health of the reef.',
-        'Astronauts on the ISS photograph the reef to help monitor its vast ecosystem.',
-        'It is a composite of over 2,900 individual reefs and 900 islands.'
-      ],
-        imageUrl: 'https://eoimages.gsfc.nasa.gov/images/imagerecords/145000/145196/gulfofcarpentaria_oli_2019153_lrg.jpg'
-    },
-    {
-        name: 'Himalayas',
-        coordinates: { lat: 27.9881, lng: 86.9250 },
-        description: 'The world\'s highest mountain range, including Mount Everest.',
-        facts: [
-        'Astronauts photograph the Himalayas from an altitude of over 260 miles.',
-        'Instruments on the ISS, like COWVR, help monitor weather patterns in the region.',
-        'The range is made up of three parallel mountain ranges stretching over 1,800 miles.'
-      ],
-        imageUrl: 'https://www.nasa.gov/wp-content/uploads/2023/04/iss068e040577.jpg'
-    },
-    {
-        name: 'Aurora Borealis',
-        coordinates: { lat: 64.2008, lng: -149.4937 },
-        description: 'The Northern Lights, a spectacular natural light display.',
-        facts: [
-        'Astronauts on the ISS often photograph auroras from the Cupola window.',
-        'The frequency and intensity of auroras are linked to the 11-year solar cycle.',
-        'They are caused by energized particles from the Sun hitting Earth\'s upper atmosphere.'
-      ],
-        imageUrl: 'https://www.nasa.gov/wp-content/uploads/2016/02/iss046e0278z.jpg'
-    },
-    {
-        name: 'Pacific Ocean',
-        coordinates: { lat: 0, lng: -140 },
-        description: 'The vast Pacific Ocean, Earth\'s largest body of water.',
-        facts: [
-        'The ISS orbits over the Pacific multiple times a day, enabling continuous monitoring.',
-        'Instruments like EMIT on the ISS can track pollution and wastewater plumes.',
-        'The ISS deploys CubeSats to gather data on climate patterns and ocean phenomena.'
-      ],
-        imageUrl: 'https://www.nasa.gov/wp-content/uploads/2022/01/iss066e095532.jpg'
-    }
-  ], []);
-
+  
   const gData = useMemo(() => locations.map(loc => ({
     lat: loc.coordinates.lat,
     lng: loc.coordinates.lng,

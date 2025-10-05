@@ -203,6 +203,22 @@ const GamePhaseContainer = styled(motion.div)`
   padding: 2rem;
 `;
 
+const ImageGallery = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+`;
+
+const GalleryImage = styled(motion.img)`
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  cursor: pointer;
+`;
+
 const Input = styled.input`
   background: rgba(0, 0, 0, 0.3);
   border: 2px solid #00d4ff;
@@ -227,7 +243,7 @@ const Input = styled.input`
   }
 `;
 
-const BuoyancySimulator = ({ astronautStats, setAstronautStats }) => {
+const BuoyancySimulator = ({ astronautStats, setAstronautStats, images }) => {
   const [gameState, setGameState] = useState('setup'); // setup, adjust, testing, result
   const [userWeight, setUserWeight] = useState(75);
   const [addedWeight, setAddedWeight] = useState(0);
@@ -311,8 +327,17 @@ const BuoyancySimulator = ({ astronautStats, setAstronautStats }) => {
           >
             <StatusDisplay>
               <h3><FaSwimmingPool /> Neutral Buoyancy Lab</h3>
-              <p>Welcome to the Neutral Buoyancy Laboratory (NBL) training simulation. 
-              This will help you understand how astronauts train for spacewalks underwater.</p>
+              <p>Welcome to the Neutral Buoyancy Laboratory (NBL), a massive indoor pool where astronauts train for spacewalks. By achieving neutral buoyancy, we can simulate the weightless environment of space.</p>
+              <ImageGallery>
+                {images && images.slice(0, 4).map((img, index) => (
+                  <GalleryImage 
+                    key={index} 
+                    src={img} 
+                    alt={`NBL Training Image ${index + 1}`} 
+                    whileHover={{ scale: 1.05, borderColor: '#00f7ff' }}
+                  />
+                ))}
+              </ImageGallery>
               
               <div style={{margin: '2rem 0'}}>
                 <ControlLabel>Enter your weight to begin</ControlLabel>

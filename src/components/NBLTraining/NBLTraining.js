@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { searchNasaImages } from '../../services/nasaService';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import BuoyancySimulator from './BuoyancySimulator';
@@ -7,11 +8,32 @@ import ProgressTracker from './ProgressTracker';
 import LunarSimulation from './LunarSimulation';
 
 const NBLContainer = styled.div`
+  background-image: url(${props => props.bgImage});
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
   min-height: 100vh;
   padding: 100px 2rem 2rem;
   display: flex;
   flex-direction: column;
   align-items: center;
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 1;
+  }
+  
+  & > * {
+    position: relative;
+    z-index: 2;
+  }
 `;
 
 const Title = styled(motion.h1)`
@@ -72,8 +94,8 @@ const GameModeSelector = styled.div`
 const ModeButton = styled(motion.button)`
   background: ${props => props.isActive ? 
     'linear-gradient(45deg, #0099cc, #00d4ff)' : 
-    'rgba(255, 255, 255, 0.1)'};
-  border: 1px solid ${props => props.isActive ? '#00d4ff' : 'rgba(255, 255, 255, 0.2)'};
+    'rgba(0, 0, 0, 0.8)'};
+  border: 2px solid ${props => props.isActive ? '#00d4ff' : '#00d4ff'};
   border-radius: 25px;
   padding: 1rem 2rem;
   color: white;
@@ -82,15 +104,21 @@ const ModeButton = styled(motion.button)`
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
   
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 20px rgba(0, 212, 255, 0.3);
+    box-shadow: 0 10px 25px rgba(0, 212, 255, 0.5);
+    background: ${props => props.isActive ? 
+      'linear-gradient(45deg, #00b3ff, #00f7ff)' : 
+      'rgba(0, 212, 255, 0.2)'};
   }
 `;
 
 const NBLTraining = () => {
   const [gameMode, setGameMode] = useState('buoyancy');
+    const [nblImages, setNblImages] = useState([]);
   const [astronautStats, setAstronautStats] = useState({
     completedMissions: 0,
     totalScore: 0
@@ -115,6 +143,32 @@ const NBLTraining = () => {
     }
   };
 
+    useEffect(() => {
+    const fetchNblImages = async () => {
+      // Search for multiple types of space-related images
+      const searches = [
+        'International Space Station 3D',
+        'spacewalk EVA training',
+        'astronaut underwater training',
+        'ISS technical diagram',
+        'space station modules'
+      ];
+      
+      let allImages = [];
+      for (const search of searches) {
+        const images = await searchNasaImages(search);
+        if (images.length > 0) {
+          allImages = [...allImages, ...images.slice(0, 3).map(img => img.links[0].href)];
+        }
+      }
+      
+      if (allImages.length > 0) {
+        setNblImages(allImages);
+      }
+    };
+    fetchNblImages();
+  }, []);
+
   const gameModes = [
     { id: 'buoyancy', label: 'Buoyancy Control', icon: '⚖️' },
     { id: 'missions', label: 'Training Missions', icon: '🎯' },
@@ -122,7 +176,7 @@ const NBLTraining = () => {
   ];
 
   return (
-    <NBLContainer>
+    <NBLContainer bgImage={nblImages[0]}>
       <motion.div
         variants={containerVariants}
         initial="hidden"
@@ -159,6 +213,7 @@ const NBLTraining = () => {
               {gameMode === 'buoyancy' && (
                 <BuoyancySimulator
                   key="buoyancy"
+                  images={nblImages}
                   astronautStats={astronautStats}
                   setAstronautStats={setAstronautStats}
                 />
@@ -166,6 +221,7 @@ const NBLTraining = () => {
               {gameMode === 'missions' && (
                 <TrainingMissions
                   key="missions"
+                  images={nblImages}
                   astronautStats={astronautStats}
                   setAstronautStats={setAstronautStats}
                 />
@@ -173,6 +229,7 @@ const NBLTraining = () => {
               {gameMode === 'lunar' && (
                 <LunarSimulation
                   key="lunar"
+                  images={nblImages}
                   astronautStats={astronautStats}
                   setAstronautStats={setAstronautStats}
                 />

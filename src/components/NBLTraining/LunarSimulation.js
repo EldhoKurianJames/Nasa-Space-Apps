@@ -81,6 +81,22 @@ const WeightValue = styled.div`
     border-radius: 5px;
 `;
 
+const ImageGallery = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+`;
+
+const GalleryImage = styled(motion.img)`
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  cursor: pointer;
+`;
+
 const Button = styled(motion.button)`
     padding: 0.5rem 1rem;
     background: ${props => props.primary ? '#00d4ff' : 'transparent'};
@@ -102,7 +118,7 @@ const Button = styled(motion.button)`
     }
 `;
 
-const LunarSimulation = ({ astronautStats, setAstronautStats }) => {
+const LunarSimulation = ({ astronautStats, setAstronautStats, images }) => {
   const [phase, setPhase] = useState('descending'); // descending, on_surface, complete
   const [addedWeight, setAddedWeight] = useState(2); // Start with 2kg as minimum
   const [rocks, setRocks] = useState([
@@ -159,7 +175,17 @@ const LunarSimulation = ({ astronautStats, setAstronautStats }) => {
       <ControlPanel>
         {phase === 'descending' && (
             <>
-                <p>Add weight to descend to the lunar surface.</p>
+                                <p>Practice for lunar missions by descending to a simulated lunar surface and collecting rock samples. Adjust your weight to control your descent.</p>
+                <ImageGallery>
+                  {images && images.slice(4, 8).map((img, index) => (
+                    <GalleryImage 
+                      key={index} 
+                      src={img} 
+                      alt={`Lunar Training Image ${index + 1}`} 
+                      whileHover={{ scale: 1.05, borderColor: '#00f7ff' }}
+                    />
+                  ))}
+                </ImageGallery>
                 <WeightControl>
                     <div>Added Weight</div>
                     <WeightValue>{addedWeight.toFixed(1)} kg</WeightValue>

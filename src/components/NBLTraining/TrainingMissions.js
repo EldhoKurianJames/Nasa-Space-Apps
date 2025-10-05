@@ -33,6 +33,14 @@ const MissionCard = styled(motion.div)`
   }
 `;
 
+const MissionImage = styled.img`
+  width: 100%;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 0.5rem;
+`;
+
 const MissionIcon = styled.div`
   font-size: 2rem;
   margin-bottom: 0.5rem;
@@ -146,13 +154,13 @@ const ProgressFill = styled(motion.div)`
   border-radius: 4px;
 `;
 
-const TrainingMissions = ({ astronautStats, setAstronautStats }) => {
+const TrainingMissions = ({ astronautStats, setAstronautStats, images }) => {
   const [selectedMission, setSelectedMission] = useState('eva');
   const [missionProgress, setMissionProgress] = useState({});
   const [timer, setTimer] = useState(0);
   const [isActive, setIsActive] = useState(false);
 
-  const missions = [
+    const missions = [
     {
       id: 'eva',
       title: 'EVA Simulation',
@@ -164,7 +172,8 @@ const TrainingMissions = ({ astronautStats, setAstronautStats }) => {
         { id: 2, title: 'Tool Retrieval', details: 'Collect required tools from storage', points: 15 },
         { id: 3, title: 'Component Repair', details: 'Simulate repairing a station component', points: 25 },
         { id: 4, title: 'Exit Procedure', details: 'Safely exit and secure equipment', points: 10 }
-      ]
+      ],
+      imageUrl: images && images.length > 0 ? images[0] : ''
     },
     {
       id: 'maintenance',
@@ -177,7 +186,8 @@ const TrainingMissions = ({ astronautStats, setAstronautStats }) => {
         { id: 2, title: 'Filter Replacement', details: 'Replace air filtration components', points: 20 },
         { id: 3, title: 'Cable Management', details: 'Organize and secure loose cables', points: 15 },
         { id: 4, title: 'Documentation', details: 'Record all maintenance activities', points: 10 }
-      ]
+      ],
+      imageUrl: images && images.length > 1 ? images[1] : ''
     },
     {
       id: 'emergency',
@@ -190,7 +200,8 @@ const TrainingMissions = ({ astronautStats, setAstronautStats }) => {
         { id: 2, title: 'Isolation Procedure', details: 'Isolate affected systems quickly', points: 25 },
         { id: 3, title: 'Backup Activation', details: 'Activate backup systems', points: 20 },
         { id: 4, title: 'Status Report', details: 'Communicate status to mission control', points: 15 }
-      ]
+      ],
+      imageUrl: images && images.length > 2 ? images[2] : ''
     }
   ];
 
@@ -266,7 +277,7 @@ const TrainingMissions = ({ astronautStats, setAstronautStats }) => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            <MissionIcon>{mission.icon}</MissionIcon>
+                        {mission.imageUrl ? <MissionImage src={mission.imageUrl} alt={mission.title} /> : <MissionIcon>{mission.icon}</MissionIcon>}
             <MissionTitle>{mission.title}</MissionTitle>
             <MissionDescription>{mission.description}</MissionDescription>
           </MissionCard>
