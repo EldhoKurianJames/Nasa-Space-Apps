@@ -23,6 +23,15 @@ const LocationName = styled(motion.h4)`
   font-weight: 600;
 `;
 
+const LocationImage = styled(motion.img)`
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+`;
+
 const LocationDescription = styled(motion.p)`
   color: rgba(255, 255, 255, 0.8);
   line-height: 1.5;
@@ -136,6 +145,15 @@ const LocationInfo = ({ location }) => {
         <LocationName variants={itemVariants}>
           {location.name}
         </LocationName>
+        
+        <LocationImage 
+          src={location.imageUrl} 
+          alt={location.name} 
+          variants={itemVariants}
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 150, opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        />
         
         <LocationDescription variants={itemVariants}>
           {location.description}

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import BuoyancySimulator from './BuoyancySimulator';
 import TrainingMissions from './TrainingMissions';
 import ProgressTracker from './ProgressTracker';
+import LunarSimulation from './LunarSimulation';
 
 const NBLContainer = styled.div`
   min-height: 100vh;
@@ -91,10 +92,6 @@ const ModeButton = styled(motion.button)`
 const NBLTraining = () => {
   const [gameMode, setGameMode] = useState('buoyancy');
   const [astronautStats, setAstronautStats] = useState({
-    weight: 70, // kg
-    equipment: 0, // kg
-    buoyancy: 0, // neutral = 0, positive = +, negative = -
-    depth: 0, // meters
     completedMissions: 0,
     totalScore: 0
   });
@@ -110,11 +107,11 @@ const NBLTraining = () => {
   };
 
   const itemVariants = {
-    hidden: { y: 50, opacity: 0 },
+    hidden: { y: 20, opacity: 0 },
     visible: {
       y: 0,
       opacity: 1,
-      transition: { duration: 0.6 }
+      transition: { duration: 0.4 }
     }
   };
 
@@ -174,29 +171,11 @@ const NBLTraining = () => {
                 />
               )}
               {gameMode === 'lunar' && (
-                <div style={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  height: '100%',
-                  textAlign: 'center'
-                }}>
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    style={{ fontSize: '4rem', marginBottom: '2rem' }}
-                  >
-                    🌙
-                  </motion.div>
-                  <h3 style={{ color: '#00d4ff', marginBottom: '1rem' }}>
-                    Lunar Simulation Mode
-                  </h3>
-                  <p style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
-                    Descend to the bottom of the NBL pool to simulate lunar gravity and 
-                    complete Moon mission tasks like collecting samples and using lunar tools.
-                  </p>
-                </div>
+                <LunarSimulation
+                  key="lunar"
+                  astronautStats={astronautStats}
+                  setAstronautStats={setAstronautStats}
+                />
               )}
             </AnimatePresence>
           </MainPanel>

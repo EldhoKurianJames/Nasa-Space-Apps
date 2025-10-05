@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
+import { MissionProvider } from './contexts/MissionContext';
 import Header from './components/Header/Header';
 import Home from './components/Home/Home';
 import CupolaExperience from './components/CupolaExperience/CupolaExperience';
@@ -51,7 +52,8 @@ const MainContent = styled(motion.main)`
 
 function App() {
   return (
-    <Router>
+    <MissionProvider>
+      <Router>
       <AppContainer>
         <ParticleBackground />
         <StarsBackground />
@@ -71,8 +73,9 @@ function App() {
         <NotificationSystem />
         <HelpSystem />
         <WelcomeTutorial />
-      </AppContainer>
-    </Router>
+        </AppContainer>
+      </Router>
+    </MissionProvider>
   );
 }
 

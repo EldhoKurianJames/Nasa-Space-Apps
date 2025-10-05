@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
+import { FaWeightHanging, FaSwimmingPool, FaTint, FaCheckCircle, FaTimesCircle, FaInfoCircle } from 'react-icons/fa';
 
+// ... (Keep all existing styled-components: SimulatorContainer, PoolContainer, etc.)
 const SimulatorContainer = styled(motion.div)`
   display: flex;
   flex-direction: column;
@@ -87,6 +89,8 @@ const ControlGroup = styled.div`
   border: 1px solid rgba(0, 212, 255, 0.3);
   border-radius: 10px;
   padding: 1rem;
+  display: flex;
+  flex-direction: column;
 `;
 
 const ControlLabel = styled.label`
@@ -107,39 +111,80 @@ const ControlValue = styled.div`
 const ControlButtons = styled.div`
   display: flex;
   gap: 0.5rem;
+  margin-top: auto;
 `;
 
 const ControlButton = styled(motion.button)`
   background: ${props => props.variant === 'add' ? 
-    'linear-gradient(45deg, #00cc44, #00ff55)' : 
-    'linear-gradient(45deg, #cc4400, #ff5500)'};
+    'linear-gradient(45deg, #00a1ff, #00f7ff)' : 
+    'linear-gradient(45deg, #ff6b00, #ff9d00)'};
   border: none;
-  border-radius: 8px;
-  padding: 0.5rem 1rem;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
   color: white;
   cursor: pointer;
   font-weight: 600;
   flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: 'Orbitron', sans-serif;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
   
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+  
+  svg {
+    font-size: 1.2em;
   }
 `;
 
-const StatusDisplay = styled.div`
-  background: rgba(0, 212, 255, 0.1);
-  border: 1px solid rgba(0, 212, 255, 0.3);
-  border-radius: 10px;
-  padding: 1rem;
+const StatusDisplay = styled(motion.div)`
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(0, 212, 255, 0.5);
+  border-radius: 12px;
+  padding: 1.5rem;
   text-align: center;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  max-width: 500px;
+  margin: 0 auto;
+  
+  h3 {
+    color: #00d4ff;
+    margin-top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 1.4rem;
+  }
+  
+  p {
+    margin: 1rem 0;
+    line-height: 1.6;
+  }
 `;
 
 const StatusText = styled.div`
   color: ${props => {
-    if (props.buoyancy > 5) return '#ff4444';
-    if (props.buoyancy < -5) return '#ff4444';
-    if (Math.abs(props.buoyancy) <= 2) return '#44ff44';
+    if (props.status === 'success') return '#44ff44';
+    if (props.status === 'fail') return '#ff4444';
     return '#ffaa44';
   }};
   font-family: 'Orbitron', monospace;
@@ -148,190 +193,326 @@ const StatusText = styled.div`
   margin-bottom: 0.5rem;
 `;
 
-const BuoyancyBar = styled.div`
-  width: 100%;
-  height: 20px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 10px;
-  position: relative;
-  overflow: hidden;
-  margin-top: 1rem;
+const GamePhaseContainer = styled(motion.div)`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 1rem;
+  padding: 2rem;
 `;
 
-const BuoyancyIndicator = styled(motion.div)`
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: ${props => Math.min(Math.abs(props.buoyancy) * 2, 100)}%;
-  height: 100%;
-  background: ${props => {
-    if (props.buoyancy > 0) return 'linear-gradient(90deg, #ff4444, #ff6666)';
-    if (props.buoyancy < 0) return 'linear-gradient(90deg, #4444ff, #6666ff)';
-    return 'linear-gradient(90deg, #44ff44, #66ff66)';
-  }};
-  border-radius: 10px;
+const Input = styled.input`
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid #00d4ff;
+  color: white;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  text-align: center;
+  width: 150px;
+  font-family: 'Orbitron', sans-serif;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+  
+  &:focus {
+    outline: none;
+    border-color: #00f7ff;
+    box-shadow: 0 0 20px rgba(0, 247, 255, 0.4);
+  }
+  
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+  }
 `;
 
 const BuoyancySimulator = ({ astronautStats, setAstronautStats }) => {
-  const [isSimulating, setIsSimulating] = useState(false);
-  
-  const poolDepth = 12; // meters (actual NBL depth is about 12m)
-  
-  // Calculate buoyancy based on weight, equipment, and added weights/floaties
-  const calculateBuoyancy = () => {
-    const totalWeight = astronautStats.weight + astronautStats.equipment;
-    // Simplified buoyancy calculation
-    return totalWeight - 70; // 70kg is roughly neutral in water
-  };
+  const [gameState, setGameState] = useState('setup'); // setup, adjust, testing, result
+  const [userWeight, setUserWeight] = useState(75);
+  const [addedWeight, setAddedWeight] = useState(0);
+  const [addedFloaties, setAddedFloaties] = useState(0);
+  const [testResult, setTestResult] = useState(null); // 'success' or 'fail'
+  const [showHint, setShowHint] = useState(false);
+  const poolDepth = 12; // meters
 
-  const updateAstronautStats = (property, change) => {
-    setAstronautStats(prev => ({
-      ...prev,
-      [property]: Math.max(0, prev[property] + change)
-    }));
-  };
+  const targetBuoyancy = useMemo(() => {
+    // Simplified physics: assume average human density is slightly less than water.
+    // A 75kg person needs about 2-3kg of weight to be neutral.
+    return (userWeight / 30).toFixed(1);
+  }, [userWeight]);
 
-  const getBuoyancyStatus = () => {
-    const buoyancy = calculateBuoyancy();
-    if (Math.abs(buoyancy) <= 2) return 'NEUTRAL BUOYANCY ACHIEVED!';
-    if (buoyancy > 5) return 'TOO HEAVY - SINKING FAST';
-    if (buoyancy < -5) return 'TOO LIGHT - FLOATING UP';
-    if (buoyancy > 0) return 'SLIGHTLY NEGATIVE - SINKING';
-    return 'SLIGHTLY POSITIVE - FLOATING';
-  };
+  const currentBuoyancy = useMemo(() => {
+    const weightEffect = addedWeight;
+    const floatyEffect = addedFloaties * -1.5; // Floaties have a stronger upward force
+    return weightEffect + floatyEffect;
+  }, [addedWeight, addedFloaties]);
+
+  const buoyancyDifference = useMemo(() => {
+    return currentBuoyancy - targetBuoyancy;
+  }, [currentBuoyancy, targetBuoyancy]);
 
   const getAstronautDepth = () => {
-    const buoyancy = calculateBuoyancy();
-    if (buoyancy > 10) return poolDepth * 0.9; // Near bottom
-    if (buoyancy > 5) return poolDepth * 0.7;
-    if (buoyancy > 2) return poolDepth * 0.5;
-    if (Math.abs(buoyancy) <= 2) return poolDepth * 0.4; // Neutral depth
-    if (buoyancy > -5) return poolDepth * 0.3;
-    return poolDepth * 0.1; // Near surface
+    if (gameState !== 'testing') return poolDepth * 0.1; // At surface
+    const diff = buoyancyDifference;
+    if (diff > 10) return poolDepth * 0.9; // Sinking fast
+    if (diff > 2) return poolDepth * 0.6;
+    if (Math.abs(diff) <= 2) return poolDepth * 0.4; // Neutral depth
+    if (diff < -10) return poolDepth * 0.05; // Floating fast
+    if (diff < -2) return poolDepth * 0.2;
+    return poolDepth * 0.4;
   };
 
-  const startSimulation = () => {
-    setIsSimulating(true);
-    // Auto-stop simulation after 10 seconds
-    setTimeout(() => setIsSimulating(false), 10000);
+  const handleStartAdjusting = () => {
+    if (userWeight >= 40 && userWeight <= 150) {
+      setGameState('adjust');
+      setShowHint(true);
+      setTimeout(() => setShowHint(false), 5000);
+    }
+  };
+
+  const handleBuoyancyTest = () => {
+    setGameState('testing');
+    setShowHint(false);
+    
+    // Add visual feedback during test
+    const testDuration = 4000; // 4 seconds
+    
+    setTimeout(() => {
+      const isSuccess = Math.abs(buoyancyDifference) <= 2;
+      setTestResult(isSuccess ? 'success' : 'fail');
+      setGameState('result');
+      
+      if (isSuccess) {
+        setAstronautStats(prev => ({ 
+          ...prev, 
+          completedMissions: prev.completedMissions + 1, 
+          totalScore: prev.totalScore + 100 
+        }));
+      }
+    }, testDuration);
+  };
+
+  const handleReset = () => {
+    setGameState('setup');
+    setAddedWeight(0);
+    setAddedFloaties(0);
+    setTestResult(null);
+  };
+
+  const renderGameState = () => {
+    switch (gameState) {
+      case 'setup':
+        return (
+          <GamePhaseContainer 
+            initial={{opacity: 0, y: 20}}
+            animate={{opacity: 1, y: 0}}
+            transition={{duration: 0.5}}
+          >
+            <StatusDisplay>
+              <h3><FaSwimmingPool /> Neutral Buoyancy Lab</h3>
+              <p>Welcome to the Neutral Buoyancy Laboratory (NBL) training simulation. 
+              This will help you understand how astronauts train for spacewalks underwater.</p>
+              
+              <div style={{margin: '2rem 0'}}>
+                <ControlLabel>Enter your weight to begin</ControlLabel>
+                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginTop: '0.5rem'}}>
+                  <Input 
+                    type="number" 
+                    value={userWeight} 
+                    onChange={e => setUserWeight(Math.max(40, Math.min(150, Number(e.target.value))))}
+                    min={40}
+                    max={150}
+                    placeholder="40-150 kg"
+                  />
+                  <span style={{fontSize: '1.2rem'}}>kg</span>
+                </div>
+              </div>
+              
+              <ControlButton 
+                variant="add" 
+                onClick={handleStartAdjusting}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <FaTint /> Begin Training
+              </ControlButton>
+              
+              <p style={{marginTop: '1.5rem', fontSize: '0.9rem', opacity: 0.8}}>
+                <FaInfoCircle /> Tip: The NBL helps astronauts practice in an environment that simulates microgravity.
+              </p>
+            </StatusDisplay>
+          </GamePhaseContainer>
+        );
+      case 'result':
+        return (
+          <GamePhaseContainer 
+            initial={{opacity: 0, scale: 0.9}}
+            animate={{opacity: 1, scale: 1}}
+            transition={{type: 'spring', stiffness: 300}}
+          >
+            <StatusDisplay>
+              {testResult === 'success' ? (
+                <>
+                  <StatusText status="success">
+                    <FaCheckCircle /> MISSION ACCOMPLISHED!
+                  </StatusText>
+                  <p>You've successfully achieved neutral buoyancy! This is crucial for spacewalk training as it simulates the microgravity environment of space.</p>
+                  <p>Your score: <strong>+100 points</strong></p>
+                </>
+              ) : (
+                <>
+                  <StatusText status="fail">
+                    <FaTimesCircle /> TRY AGAIN
+                  </StatusText>
+                  <p>Your buoyancy wasn't quite right. In space, being too heavy or too light could make it difficult to work effectively.</p>
+                  <p>Target Buoyancy: <strong>{targetBuoyancy} kg</strong></p>
+                  <p>Your Buoyancy: <strong>{currentBuoyancy.toFixed(1)} kg</strong></p>
+                  <p>Difference: <strong>{Math.abs(buoyancyDifference).toFixed(1)} kg</strong></p>
+                </>
+              )}
+              
+              <ControlButton 
+                variant={testResult === 'success' ? 'add' : 'remove'}
+                onClick={handleReset}
+                style={{marginTop: '1.5rem'}}
+              >
+                {testResult === 'success' ? 'Continue Training' : 'Try Again'}
+              </ControlButton>
+            </StatusDisplay>
+          </GamePhaseContainer>
+        )
+      default: // 'adjust' and 'testing' phases share the main view
+        return (
+          <>
+            <PoolContainer>
+              <WaterSurface />
+              <DepthMarkers><div>0m</div><div>6m</div><div>12m</div></DepthMarkers>
+              <AstronautInPool
+                animate={{ top: `${(getAstronautDepth() / poolDepth) * 100}%` }}
+                transition={{ duration: 3, ease: 'easeInOut' }}
+              >👨‍🚀</AstronautInPool>
+            </PoolContainer>
+            <ControlPanel>
+              <ControlGroup>
+                <ControlLabel><FaWeightHanging /> Target Buoyancy</ControlLabel>
+                <ControlValue style={{fontSize: '1.8rem', color: '#00f7ff'}}>{targetBuoyancy} kg</ControlValue>
+                <div style={{ 
+                  height: '4px', 
+                  background: 'rgba(255,255,255,0.1)', 
+                  margin: '0.5rem 0',
+                  borderRadius: '2px',
+                  overflow: 'hidden'
+                }}>
+                  <motion.div 
+                    style={{
+                      height: '100%',
+                      background: 'linear-gradient(90deg, #00a1ff, #00f7ff)',
+                      width: '100%',
+                      borderRadius: '2px'
+                    }}
+                    initial={{ width: 0 }}
+                    animate={{ width: '100%' }}
+                    transition={{ duration: 1 }}
+                  />
+                </div>
+                <p style={{fontSize: '0.8rem', margin: '0.5rem 0 0', opacity: 0.8}}>
+                  <FaInfoCircle /> Adjust weights and floaties to match this target
+                </p>
+              </ControlGroup>
+              
+              <ControlGroup>
+                <ControlLabel><FaWeightHanging /> Weights</ControlLabel>
+                <ControlValue style={{fontSize: '1.5rem'}}>{addedWeight} kg</ControlValue>
+                <ControlButtons>
+                  <ControlButton 
+                    variant="remove" 
+                    onClick={() => setAddedWeight(w => Math.max(0, w - 2))}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    -2kg
+                  </ControlButton>
+                  <ControlButton 
+                    variant="add" 
+                    onClick={() => setAddedWeight(w => w + 2)}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    +2kg
+                  </ControlButton>
+                </ControlButtons>
+                <p style={{fontSize: '0.8rem', margin: '0.5rem 0 0', opacity: 0.6}}>
+                  Adds downward force
+                </p>
+              </ControlGroup>
+              
+              <ControlGroup>
+                <ControlLabel><FaTint /> Floaties</ControlLabel>
+                <ControlValue style={{fontSize: '1.5rem'}}>{addedFloaties} units</ControlValue>
+                <ControlButtons>
+                  <ControlButton 
+                    variant="remove" 
+                    onClick={() => setAddedFloaties(f => Math.max(0, f - 1))}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    -1
+                  </ControlButton>
+                  <ControlButton 
+                    variant="add" 
+                    onClick={() => setAddedFloaties(f => f + 1)}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    +1
+                  </ControlButton>
+                </ControlButtons>
+                <p style={{fontSize: '0.8rem', margin: '0.5rem 0 0', opacity: 0.6}}>
+                  Adds upward force (1 unit = 1.5kg buoyancy)
+                </p>
+              </ControlGroup>
+            </ControlPanel>
+            
+            {showHint && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{
+                  background: 'rgba(0, 168, 255, 0.1)',
+                  border: '1px solid rgba(0, 168, 255, 0.3)',
+                  borderRadius: '8px',
+                  padding: '1rem',
+                  marginTop: '1rem',
+                  textAlign: 'center',
+                  maxWidth: '600px',
+                  marginLeft: 'auto',
+                  marginRight: 'auto'
+                }}
+              >
+                <FaInfoCircle style={{ marginRight: '0.5rem' }} />
+                <strong>Tip:</strong> Try to match the target buoyancy by adjusting weights and floaties. 
+                Each floatie adds 1.5kg of upward force.
+              </motion.div>
+            )}
+            <motion.button
+              className="button-primary"
+              onClick={handleBuoyancyTest}
+              disabled={gameState === 'testing'}
+              style={{ alignSelf: 'center', padding: '1rem 2rem', fontSize: '1.1rem' }}
+            >
+              {gameState === 'testing' ? 'Testing...' : 'Initiate Buoyancy Test'}
+            </motion.button>
+          </>
+        );
+    }
   };
 
   return (
-    <SimulatorContainer
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-    >
-      <PoolContainer>
-        <WaterSurface />
-        
-        <DepthMarkers>
-          <div>0m</div>
-          <div>3m</div>
-          <div>6m</div>
-          <div>9m</div>
-          <div>12m</div>
-        </DepthMarkers>
-        
-        <AstronautInPool
-          animate={{
-            top: `${(getAstronautDepth() / poolDepth) * 100}%`,
-            rotate: isSimulating ? [0, 10, -10, 0] : 0,
-            scale: isSimulating ? [1, 1.1, 1] : 1
-          }}
-          transition={{
-            top: { duration: 2, ease: "easeInOut" },
-            rotate: { duration: 2, repeat: isSimulating ? Infinity : 0 },
-            scale: { duration: 1, repeat: isSimulating ? Infinity : 0 }
-          }}
-        >
-          👨‍🚀
-        </AstronautInPool>
-      </PoolContainer>
-
-      <ControlPanel>
-        <ControlGroup>
-          <ControlLabel>Body Weight</ControlLabel>
-          <ControlValue>{astronautStats.weight} kg</ControlValue>
-          <ControlButtons>
-            <ControlButton
-              variant="remove"
-              onClick={() => updateAstronautStats('weight', -5)}
-              disabled={astronautStats.weight <= 50}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              -5kg
-            </ControlButton>
-            <ControlButton
-              variant="add"
-              onClick={() => updateAstronautStats('weight', 5)}
-              disabled={astronautStats.weight >= 120}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              +5kg
-            </ControlButton>
-          </ControlButtons>
-        </ControlGroup>
-
-        <ControlGroup>
-          <ControlLabel>Equipment & Weights</ControlLabel>
-          <ControlValue>{astronautStats.equipment} kg</ControlValue>
-          <ControlButtons>
-            <ControlButton
-              variant="remove"
-              onClick={() => updateAstronautStats('equipment', -2)}
-              disabled={astronautStats.equipment <= 0}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Remove Weight
-            </ControlButton>
-            <ControlButton
-              variant="add"
-              onClick={() => updateAstronautStats('equipment', 2)}
-              disabled={astronautStats.equipment >= 50}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Add Weight
-            </ControlButton>
-          </ControlButtons>
-        </ControlGroup>
-
-        <StatusDisplay>
-          <ControlLabel>Buoyancy Status</ControlLabel>
-          <StatusText buoyancy={calculateBuoyancy()}>
-            {getBuoyancyStatus()}
-          </StatusText>
-          <div style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '0.9rem' }}>
-            Depth: {getAstronautDepth().toFixed(1)}m
-          </div>
-          <BuoyancyBar>
-            <BuoyancyIndicator 
-              buoyancy={calculateBuoyancy()}
-              animate={{ width: `${Math.min(Math.abs(calculateBuoyancy()) * 2, 100)}%` }}
-            />
-          </BuoyancyBar>
-        </StatusDisplay>
-      </ControlPanel>
-
-      <motion.button
-        className="button-primary"
-        onClick={startSimulation}
-        disabled={isSimulating}
-        style={{ 
-          alignSelf: 'center',
-          padding: '1rem 2rem',
-          fontSize: '1.1rem'
-        }}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-      >
-        {isSimulating ? 'Simulating...' : 'Start Buoyancy Test'}
-      </motion.button>
+    <SimulatorContainer>
+      <AnimatePresence mode="wait">
+        {renderGameState()}
+      </AnimatePresence>
     </SimulatorContainer>
   );
 };

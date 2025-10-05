@@ -1,38 +1,33 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useContext } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
+import Globe from 'react-globe.gl';
 import WeatherOverlay from './WeatherOverlay';
+import { useMission } from '../../contexts/MissionContext';
 
 const ViewerContainer = styled.div`
   flex: 1;
   position: relative;
   display: flex;
   flex-direction: column;
+  background: #0a0a1a;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
 `;
 
 const EarthView = styled.div`
   flex: 1;
-  background: linear-gradient(180deg, #000011 0%, #001122 50%, #003366 100%);
+  background: radial-gradient(ellipse at center, #0a0a2a 0%, #000011 70%, #000000 100%);
   position: relative;
   overflow: hidden;
+  cursor: grab;
+  border-radius: 10px;
+  border: 2px solid #333344;
+  box-shadow: inset 0 0 50px rgba(0, 150, 255, 0.1);
   display: flex;
-  align-items: center;
   justify-content: center;
-`;
-
-const EarthImage = styled(motion.div)`
-  width: 80%;
-  height: 80%;
-  border-radius: 50%;
-  background: ${props => props.backgroundImage ? 
-    `url(${props.backgroundImage})` : 
-    'linear-gradient(45deg, #4a90e2, #7bb3f0, #a8d0f0)'};
-  background-size: cover;
-  background-position: center;
-  position: relative;
-  box-shadow: 
-    inset -20px -20px 50px rgba(0, 0, 0, 0.5),
-    0 0 50px rgba(74, 144, 226, 0.3);
+  align-items: center;
   
   &::before {
     content: '';
@@ -41,237 +36,502 @@ const EarthImage = styled(motion.div)`
     left: 0;
     right: 0;
     bottom: 0;
-    border-radius: 50%;
-    background: linear-gradient(135deg, 
-      transparent 0%, 
-      rgba(255, 255, 255, 0.1) 30%, 
-      transparent 50%, 
-      rgba(0, 0, 0, 0.2) 100%);
+    background: 
+      linear-gradient(90deg, rgba(0,212,255,0.1) 1px, transparent 1px),
+      linear-gradient(0deg, rgba(0,212,255,0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.5;
   }
-`;
-
-const CloudLayer = styled(motion.div)`
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, 
-    rgba(255, 255, 255, 0.3) 0%, 
-    transparent 20%),
-    radial-gradient(circle at 70% 60%, 
-    rgba(255, 255, 255, 0.2) 0%, 
-    transparent 25%),
-    radial-gradient(circle at 20% 80%, 
-    rgba(255, 255, 255, 0.25) 0%, 
-    transparent 15%);
+  
+  &:active { 
+    cursor: grabbing; 
+  }
 `;
 
 const AstronautOverlay = styled(motion.div)`
   position: absolute;
   bottom: 20px;
   right: 20px;
-  font-size: 3rem;
+  font-size: 4rem;
   z-index: 10;
-  filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.5));
-`;
-
-const LocationSelector = styled.div`
-  background: rgba(0, 0, 0, 0.8);
-  padding: 1rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  justify-content: center;
-  border-top: 1px solid rgba(0, 212, 255, 0.3);
-`;
-
-const LocationButton = styled(motion.button)`
-  background: ${props => props.isSelected ? 
-    'linear-gradient(45deg, #0099cc, #00d4ff)' : 
-    'rgba(255, 255, 255, 0.1)'};
-  border: 1px solid ${props => props.isSelected ? '#00d4ff' : 'rgba(255, 255, 255, 0.2)'};
-  border-radius: 15px;
-  padding: 0.5rem 1rem;
-  color: white;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 0.8rem;
+  filter: drop-shadow(0 0 10px rgba(0, 212, 255, 0.5));
+  pointer-events: none;
+  will-change: transform;
+  perspective: 1000px;
+  transform-style: preserve-3d;
   
-  &:hover {
-    background: ${props => props.isSelected ? 
-      'linear-gradient(45deg, #0099cc, #00d4ff)' : 
-      'rgba(255, 255, 255, 0.2)'};
-    transform: translateY(-2px);
+  &::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    right: -10px;
+    bottom: -10px;
+    border: 2px solid rgba(0, 212, 255, 0.3);
+    border-radius: 50%;
+    animation: pulse 4s infinite ease-in-out;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 0.5; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+  }
+`;
+
+const MissionPromptContainer = styled(motion.div)`
+  position: absolute;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 20, 40, 0.95);
+  padding: 1.5rem;
+  border-radius: 10px;
+  border: 1px solid #00f7ff;
+  color: white;
+  z-index: 1000;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+  
+  h3 {
+    color: #00f7ff;
+    margin-top: 0;
+    border-bottom: 1px solid rgba(0, 212, 255, 0.3);
+    padding-bottom: 0.5rem;
+  }
+  
+  p {
+    margin: 0.5rem 0;
+    line-height: 1.5;
+  }
+`;
+
+const ButtonGroup = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  
+  button {
+    padding: 0.5rem 1rem;
+    border: 1px solid #00f7ff;
+    background: transparent;
+    color: #00f7ff;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'Orbitron', sans-serif;
+    transition: all 0.3s ease;
+    
+    &:hover {
+      background: rgba(0, 212, 255, 0.1);
+    }
+    
+    &.primary {
+      background: #00f7ff;
+      color: #0a0a1a;
+      font-weight: bold;
+      
+      &:hover {
+        background: #00d4ff;
+      }
+    }
   }
 `;
 
 const StatusBar = styled.div`
-  background: rgba(0, 212, 255, 0.1);
-  padding: 0.5rem 1rem;
+  background: rgba(10, 20, 40, 0.8);
+  padding: 0.8rem 1.5rem;
+  margin-top: 15px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   font-family: 'Orbitron', monospace;
-  font-size: 0.8rem;
-  color: #00d4ff;
-  border-top: 1px solid rgba(0, 212, 255, 0.3);
+  font-size: 0.9rem;
+  color: #00f7ff;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  box-shadow: 0 0 15px rgba(0, 150, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.5), transparent);
+  }
+  
+  span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    
+    &::before {
+      content: '◉';
+      color: #00f7ff;
+      font-size: 0.6em;
+      filter: drop-shadow(0 0 5px #00f7ff);
+      animation: blink 2s infinite;
+    }
+  }
+  
+  @keyframes blink {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+  }
 `;
 
 const EarthViewer = ({ character, selectedLocation, setSelectedLocation }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showWeather, setShowWeather] = useState(false);
+  const [showMissionPrompt, setShowMissionPrompt] = useState(null);
+  const globeRef = useRef();
+  const { completeMission, completedMissions } = useMission();
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const locations = [
+  // Keep track of auto-rotation state
+  const isAutoRotating = useRef(true);
+  const animationId = useRef();
+  
+  // Handle globe click events
+  const handleGlobeClick = (event) => {
+    if (event.point) {
+      isAutoRotating.current = false;
+      const { lat, lng } = event;
+      
+      // Find if clicked location is a mission location
+      const missionLocation = locations.find(loc => 
+        Math.abs(loc.coordinates.lat - lat) < 1 && 
+        Math.abs(loc.coordinates.lng - lng) < 1
+      );
+      
+      if (missionLocation && !completedMissions.includes(missionLocation.name)) {
+        setShowMissionPrompt(missionLocation);
+      }
+      
+      setSelectedLocation(prev => ({
+        ...prev,
+        coordinates: { lat, lng }
+      }));
+    }
+  };
+
+  // Initialize the globe with a better default view
+  useEffect(() => {
+    if (globeRef.current) {
+      // Set initial view
+      
+      // Add slight rotation for dynamic feel
+      let rotation = 0;
+      const rotateGlobe = () => {
+        if (globeRef.current && isAutoRotating.current) {
+          rotation += 0.1;
+          const currentPOV = globeRef.current.pointOfView();
+          globeRef.current.pointOfView({
+            ...currentPOV,
+            lng: currentPOV.lng + 0.1, // Slower rotation
+            lat: currentPOV.lat + Math.sin(rotation * 0.1) * 0.05
+          }, 1000);
+        }
+        animationId.current = requestAnimationFrame(rotateGlobe);
+      };
+      
+      // Start rotation
+      animationId.current = requestAnimationFrame(rotateGlobe);
+      
+      // Handle window resize
+      const handleResize = () => {
+        if (globeRef.current) {
+          globeRef.current.width(window.innerWidth);
+          globeRef.current.height(window.innerHeight * 0.8);
+        }
+      };
+      
+      window.addEventListener('resize', handleResize);
+      
+      return () => {
+        if (animationId.current) {
+          cancelAnimationFrame(animationId.current);
+        }
+        window.removeEventListener('resize', handleResize);
+      };
+    }
+  }, []);
+
+  // Update view when selected location changes
+  useEffect(() => {
+    if (globeRef.current) {
+      isAutoRotating.current = false;
+      
+      // Stop any ongoing animation
+      if (animationId.current) {
+        cancelAnimationFrame(animationId.current);
+      }
+      
+      // Move to new location
+      globeRef.current.pointOfView({ 
+        lat: selectedLocation.coordinates.lat,
+        lng: selectedLocation.coordinates.lng,
+        altitude: 1.8
+      }, 1000);
+      
+      // Re-enable auto-rotation after a delay
+      const timer = setTimeout(() => {
+        isAutoRotating.current = true;
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [selectedLocation]);
+
+  const handleCompleteMission = (location) => {
+    completeMission(location.name);
+    setShowMissionPrompt(null);
+    
+    // Show completion feedback
+    const missionCompleteEvent = new CustomEvent('missionComplete', { 
+      detail: { 
+        mission: location.name,
+        nblTraining: location.nblTraining
+      } 
+    });
+    window.dispatchEvent(missionCompleteEvent);
+  };
+
+  const locations = useMemo(() => [
+    // ... (same locations as before)
     {
       name: 'Amazon Rainforest',
       coordinates: { lat: -3.4653, lng: -62.2159 },
       description: 'The lungs of our planet, producing 20% of the world\'s oxygen.',
       facts: [
-        'Covers 5.5 million square kilometers',
-        'Home to 10% of known species on Earth',
-        'Produces 20% of the world\'s oxygen'
+        'NASA\'s MODIS sensor provides daily data for near-real-time deforestation alerts.',
+        'Brazil\'s DETER system uses this data to dispatch enforcement teams within a day.',
+        'Satellite monitoring has led deforesters to create smaller, harder-to-detect clearings.'
       ],
-      imageUrl: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800'
+      imageUrl: 'https://www.nasa.gov/wp-content/uploads/2020/12/iss064e014990.jpg',
+      nblTraining: {
+        title: 'Rainforest Monitoring Training',
+        description: 'Practice using observation tools to monitor deforestation patterns',
+        objective: 'Collect 5 clear images of deforestation areas',
+        duration: '15 minutes',
+        skills: ['Camera operation', 'Data collection', 'Environmental monitoring']
+      }
     },
     {
       name: 'Sahara Desert',
       coordinates: { lat: 23.4162, lng: 25.6628 },
       description: 'The world\'s largest hot desert, visible from space due to its vast golden expanse.',
       facts: [
-        'Covers 9 million square kilometers',
-        'Sand dunes can reach heights of 180 meters',
-        'Dust from Sahara fertilizes Amazon rainforest'
+        'The Richat Structure, or "Eye of the Sahara," is a 40km-wide geological feature used as a landmark by astronauts.',
+        'Once thought to be an impact crater, it is now considered a deeply eroded geological dome.',
+        'Students can take photos of Earth from the ISS using the Sally Ride EarthKAM camera.'
       ],
-      imageUrl: 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=800'
+      imageUrl: 'https://d2pn8kiwq2w21t.cloudfront.net/images/images.ctfassets.net/cnu0m8re1nob/5V3p84S3v515l1sX2s0p5G/a6f1f124b65d03c9b28a514864f7596f/saharadesert.jpg',
+      nblTraining: {
+        title: 'Desert Landmark Navigation',
+        description: 'Practice using desert landmarks for navigation',
+        objective: 'Identify and mark 3 key landmarks from orbit',
+        duration: '10 minutes',
+        skills: ['Navigation', 'Landmark identification', 'Spatial awareness']
+      }
     },
     {
-      name: 'Great Barrier Reef',
-      coordinates: { lat: -18.2871, lng: 147.6992 },
-      description: 'The world\'s largest coral reef system, visible from space.',
-      facts: [
-        'Stretches over 2,300 kilometers',
-        'Home to 1,500 species of fish',
-        'Can be seen from space'
+        name: 'Great Barrier Reef',
+        coordinates: { lat: -18.2871, lng: 147.6992 },
+        description: 'The world\'s largest coral reef system, visible from space.',
+        facts: [
+        'NASA\'s CORAL mission uses airborne instruments to survey the health of the reef.',
+        'Astronauts on the ISS photograph the reef to help monitor its vast ecosystem.',
+        'It is a composite of over 2,900 individual reefs and 900 islands.'
       ],
-      imageUrl: 'https://images.unsplash.com/photo-1583212292454-1fe6229603b7?w=800'
+        imageUrl: 'https://eoimages.gsfc.nasa.gov/images/imagerecords/145000/145196/gulfofcarpentaria_oli_2019153_lrg.jpg'
     },
     {
-      name: 'Himalayas',
-      coordinates: { lat: 27.9881, lng: 86.9250 },
-      description: 'The world\'s highest mountain range, including Mount Everest.',
-      facts: [
-        'Contains 9 of the 10 highest peaks on Earth',
-        'Mount Everest is 8,848 meters tall',
-        'Formed by collision of tectonic plates'
+        name: 'Himalayas',
+        coordinates: { lat: 27.9881, lng: 86.9250 },
+        description: 'The world\'s highest mountain range, including Mount Everest.',
+        facts: [
+        'Astronauts photograph the Himalayas from an altitude of over 260 miles.',
+        'Instruments on the ISS, like COWVR, help monitor weather patterns in the region.',
+        'The range is made up of three parallel mountain ranges stretching over 1,800 miles.'
       ],
-      imageUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800'
+        imageUrl: 'https://www.nasa.gov/wp-content/uploads/2023/04/iss068e040577.jpg'
     },
     {
-      name: 'Aurora Borealis',
-      coordinates: { lat: 64.2008, lng: -149.4937 },
-      description: 'The Northern Lights, a spectacular natural light display.',
-      facts: [
-        'Caused by solar particles hitting Earth\'s atmosphere',
-        'Occur at altitudes of 80-500 kilometers',
-        'Best viewed from Arctic regions'
+        name: 'Aurora Borealis',
+        coordinates: { lat: 64.2008, lng: -149.4937 },
+        description: 'The Northern Lights, a spectacular natural light display.',
+        facts: [
+        'Astronauts on the ISS often photograph auroras from the Cupola window.',
+        'The frequency and intensity of auroras are linked to the 11-year solar cycle.',
+        'They are caused by energized particles from the Sun hitting Earth\'s upper atmosphere.'
       ],
-      imageUrl: 'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=800'
+        imageUrl: 'https://www.nasa.gov/wp-content/uploads/2016/02/iss046e0278z.jpg'
     },
     {
-      name: 'Pacific Ocean',
-      coordinates: { lat: 0, lng: -140 },
-      description: 'The vast Pacific Ocean, Earth\'s largest body of water.',
-      facts: [
-        'Covers about 46% of Earth\'s water surface',
-        'Contains more than half of the free water on Earth',
-        'Home to the Ring of Fire'
+        name: 'Pacific Ocean',
+        coordinates: { lat: 0, lng: -140 },
+        description: 'The vast Pacific Ocean, Earth\'s largest body of water.',
+        facts: [
+        'The ISS orbits over the Pacific multiple times a day, enabling continuous monitoring.',
+        'Instruments like EMIT on the ISS can track pollution and wastewater plumes.',
+        'The ISS deploys CubeSats to gather data on climate patterns and ocean phenomena.'
       ],
-      imageUrl: 'https://images.unsplash.com/photo-1446776653964-20c1d3a81b06?w=800'
+        imageUrl: 'https://www.nasa.gov/wp-content/uploads/2022/01/iss066e095532.jpg'
     }
-  ];
+  ], []);
+
+  const gData = useMemo(() => locations.map(loc => ({
+    lat: loc.coordinates.lat,
+    lng: loc.coordinates.lng,
+    size: 0.1,
+    color: 'lightblue',
+    ...loc
+  })), [locations]);
 
   const getAstronautEmoji = () => {
-    if (!character.helmet) return '👨';
+    // Base emoji based on gender
+    let baseEmoji = character.gender === 'female' ? '👩' : '👨';
     
-    // Different astronaut emojis based on character customization
-    const baseEmojis = {
-      light: '👨‍🚀',
-      medium: '👨🏽‍🚀',
-      dark: '👨🏿‍🚀'
-    };
+    // Add skin tone if available
+    if (character.skinTone) {
+      const skinToneModifiers = {
+        light: '🏻',
+        medium: '🏽',
+        dark: '🏿'
+      };
+      baseEmoji += skinToneModifiers[character.skinTone] || '';
+    }
     
-    return baseEmojis[character.skinTone] || '👨‍🚀';
+    // Add helmet if equipped
+    if (character.helmet) {
+      baseEmoji += '‍🚀';
+    }
+    
+    return baseEmoji;
   };
+
+  // Mission prompt component
+  const MissionPrompt = ({ location, onComplete, onClose }) => (
+    <MissionPromptContainer
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 20 }}
+    >
+      <h3>Mission: {location.nblTraining.title}</h3>
+      <p>{location.nblTraining.description}</p>
+      <p><strong>Objective:</strong> {location.nblTraining.objective}</p>
+      <p><strong>Skills:</strong> {location.nblTraining.skills.join(', ')}</p>
+      <p><strong>Duration:</strong> {location.nblTraining.duration}</p>
+      <ButtonGroup>
+        <button onClick={onClose}>Maybe Later</button>
+        <button className="primary" onClick={() => onComplete(location)}>Start Training</button>
+      </ButtonGroup>
+    </MissionPromptContainer>
+  );
 
   return (
     <ViewerContainer>
+      <AnimatePresence>
+        {showMissionPrompt && (
+          <MissionPrompt 
+            location={showMissionPrompt}
+            onComplete={handleCompleteMission}
+            onClose={() => setShowMissionPrompt(null)}
+          />
+        )}
+      </AnimatePresence>
       <EarthView>
         <WeatherOverlay 
           location={selectedLocation}
           isVisible={showWeather}
           onToggle={() => setShowWeather(false)}
         />
-        
-        <EarthImage
-          backgroundImage={selectedLocation.imageUrl}
-          animate={{ 
-            rotate: 360,
-            scale: [1, 1.05, 1]
+        <Globe
+          ref={globeRef}
+          style={{
+            width: '100%',
+            height: '100%',
+            margin: '0 auto',
+            display: 'block'
           }}
-          transition={{ 
-            rotate: { duration: 120, repeat: Infinity, ease: "linear" },
-            scale: { duration: 4, repeat: Infinity, ease: "easeInOut" }
+          globeImageUrl="https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+          bumpImageUrl="https://unpkg.com/three-globe/example/img/earth-topology.png"
+          backgroundImageUrl=""
+          showAtmosphere={true}
+          atmosphereColor="rgba(65, 154, 249, 0.4)"
+          atmosphereAltitude={0.25}
+          enablePointerInteraction={true}
+          animateIn={true}
+          animateInPreload={false}
+          onZoom={pov => {
+            if (globeRef.current) {
+              const { lat, lng, altitude } = pov;
+              const targetAlt = Math.max(1.2, Math.min(altitude, 2.5));
+              isAutoRotating.current = false;
+              globeRef.current.pointOfView({
+                lat,
+                lng,
+                altitude: targetAlt
+              }, 500);
+              
+              // Re-enable auto-rotation after a delay
+              clearTimeout(window.autoRotateTimeout);
+              window.autoRotateTimeout = setTimeout(() => {
+                isAutoRotating.current = true;
+              }, 3000);
+            }
           }}
-        >
-          <CloudLayer
-            animate={{ 
-              rotate: -360,
-              opacity: [0.3, 0.6, 0.3]
-            }}
-            transition={{ 
-              rotate: { duration: 80, repeat: Infinity, ease: "linear" },
-              opacity: { duration: 6, repeat: Infinity, ease: "easeInOut" }
-            }}
-          />
-        </EarthImage>
-        
+          onGlobeClick={handleGlobeClick}
+          onZoomEnd={() => {
+            // Ensure we can still interact after zooming
+            if (globeRef.current) {
+              globeRef.current.controls().autoRotate = false;
+            }
+          }}
+          pointsData={gData}
+          pointAltitude="size"
+          pointColor="color"
+          onPointClick={(point) => setSelectedLocation(point)}
+          pointLabel={point => `<div style="background: rgba(0,0,0,0.6); color: white; padding: 5px; border-radius: 3px;">${point.name}</div>`}
+          labelsData={gData}
+          labelLat={d => d.lat}
+          labelLng={d => d.lng}
+          labelText={d => d.name}
+          labelSize={0.5}
+          labelDotRadius={0.3}
+          labelColor={() => 'rgba(255, 255, 255, 0.75)'}
+          labelResolution={2}
+          onLabelClick={(label) => setSelectedLocation(label)}
+        />
         <AstronautOverlay
+          initial={{ opacity: 0, scale: 0.8 }}
           animate={{ 
-            y: [0, -10, 0],
+            opacity: 1, 
+            scale: 1,
+            y: [0, -15, 0],
             rotate: [0, 5, -5, 0]
           }}
           transition={{ 
-            duration: 3, 
-            repeat: Infinity, 
-            ease: "easeInOut" 
+            y: { duration: 4, repeat: Infinity, ease: "easeInOut" },
+            rotate: { duration: 8, repeat: Infinity, ease: "easeInOut" },
+            default: { duration: 0.5 }
           }}
+          key={`astronaut-${character.gender}-${character.skinTone}-${character.helmet}`}
         >
           {getAstronautEmoji()}
         </AstronautOverlay>
       </EarthView>
-
-      <LocationSelector>
-        {locations.map((location) => (
-          <LocationButton
-            key={location.name}
-            isSelected={selectedLocation.name === location.name}
-            onClick={() => setSelectedLocation(location)}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            {location.name}
-          </LocationButton>
-        ))}
-      </LocationSelector>
 
       <StatusBar>
         <span>ISS Altitude: 408 km</span>
