@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Globe from 'react-globe.gl';
 import WeatherOverlay from './WeatherOverlay';
 import { useMission } from '../../contexts/MissionContext';
-import { searchNasaImages } from '../../services/nasaService';
 
 const ViewerContainer = styled.div`
   flex: 1;
@@ -196,10 +195,8 @@ const EarthViewer = ({ character, selectedLocation, setSelectedLocation }) => {
     const { completeMission, completedMissions } = useMission();
 
   useEffect(() => {
-    const fetchNasaData = async () => {
-      const imageItems = await searchNasaImages('earth from cupola');
-
-      const initialLocations = [
+    const initializeLocations = () => {
+      const locationsWithCorrectImages = [
         {
           name: 'Amazon Rainforest',
           coordinates: { lat: -3.4653, lng: -62.2159 },
@@ -209,6 +206,7 @@ const EarthViewer = ({ character, selectedLocation, setSelectedLocation }) => {
             'Brazil\'s DETER system uses this data to dispatch enforcement teams within a day.',
             'Satellite monitoring has led deforesters to create smaller, harder-to-detect clearings.'
           ],
+          imageUrl: 'https://images.nationalgeographic.org/image/upload/t_edhub_resource_key_image/v1638890315/EducationHub/photos/amazon-river-basin.jpg',
           nblTraining: {
             title: 'Rainforest Monitoring Training',
             description: 'Practice using observation tools to monitor deforestation patterns',
@@ -226,6 +224,7 @@ const EarthViewer = ({ character, selectedLocation, setSelectedLocation }) => {
             'Once thought to be an impact crater, it is now considered a deeply eroded geological dome.',
             'Students can take photos of Earth from the ISS using the Sally Ride EarthKAM camera.'
           ],
+          imageUrl: 'https://yale-threesixty.transforms.svdcdn.com/production/Erg_Chebbi_Maroc_Wikimedia_web.jpg?w=1500&h=1500&q=80&auto=format&fit=clip&dm=1740245716&s=4fb85369e1f315e97301b3397fe29cd4',
           nblTraining: {
             title: 'Desert Landmark Navigation',
             description: 'Practice using desert landmarks for navigation',
@@ -235,65 +234,55 @@ const EarthViewer = ({ character, selectedLocation, setSelectedLocation }) => {
           }
         },
         {
-            name: 'Great Barrier Reef',
-            coordinates: { lat: -18.2871, lng: 147.6992 },
-            description: 'The world\'s largest coral reef system, visible from space.',
-            facts: [
+          name: 'Great Barrier Reef',
+          coordinates: { lat: -18.2871, lng: 147.6992 },
+          description: 'The world\'s largest coral reef system, visible from space.',
+          facts: [
             'NASA\'s CORAL mission uses airborne instruments to survey the health of the reef.',
             'Astronauts on the ISS photograph the reef to help monitor its vast ecosystem.',
             'It is a composite of over 2,900 individual reefs and 900 islands.'
           ],
+          imageUrl: 'https://www.fitzroyisland.com/wp-content/uploads/2020/12/What-You-Need-to-Know-Before-Visiting-Australias-Great-Barrier-Reef.jpg'
         },
         {
-            name: 'Himalayas',
-            coordinates: { lat: 27.9881, lng: 86.9250 },
-            description: 'The world\'s highest mountain range, including Mount Everest.',
-            facts: [
+          name: 'Himalayas',
+          coordinates: { lat: 27.9881, lng: 86.9250 },
+          description: 'The world\'s highest mountain range, including Mount Everest.',
+          facts: [
             'Astronauts photograph the Himalayas from an altitude of over 260 miles.',
             'Instruments on the ISS, like COWVR, help monitor weather patterns in the region.',
             'The range is made up of three parallel mountain ranges stretching over 1,800 miles.'
           ],
+          imageUrl: 'https://www.himalayanwonders.com/siteblog/wp-content/uploads/2016/01/snow-capped-mountains-with-lake-640x427.jpg'
         },
         {
-            name: 'Aurora Borealis',
-            coordinates: { lat: 64.2008, lng: -149.4937 },
-            description: 'The Northern Lights, a spectacular natural light display.',
-            facts: [
+          name: 'Aurora Borealis',
+          coordinates: { lat: 64.2008, lng: -149.4937 },
+          description: 'The Northern Lights, a spectacular natural light display.',
+          facts: [
             'Astronauts on the ISS often photograph auroras from the Cupola window.',
             'The frequency and intensity of auroras are linked to the 11-year solar cycle.',
             'They are caused by energized particles from the Sun hitting Earth\'s upper atmosphere.'
           ],
+          imageUrl: 'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=800&q=80'
         },
         {
-            name: 'Pacific Ocean',
-            coordinates: { lat: 0, lng: -140 },
-            description: 'The vast Pacific Ocean, Earth\'s largest body of water.',
-            facts: [
+          name: 'Pacific Ocean',
+          coordinates: { lat: 0, lng: -140 },
+          description: 'The vast Pacific Ocean, Earth\'s largest body of water.',
+          facts: [
             'The ISS orbits over the Pacific multiple times a day, enabling continuous monitoring.',
             'Instruments like EMIT on the ISS can track pollution and wastewater plumes.',
             'The ISS deploys CubeSats to gather data on climate patterns and ocean phenomena.'
           ],
+          imageUrl: 'https://ej9px6kfdm3.exactdn.com/wp-content/uploads/2020/11/Pacific-Ocean-Ocean-and-Beyond.jpg?strip=all&lossy=1&quality=75&resize=1200%2C675&ssl=1'
         }
       ];
 
-      // Replace image URLs with images from NASA API
-      if (imageItems.length > 0) {
-        const updatedLocations = initialLocations.map((loc, index) => ({
-          ...loc,
-          imageUrl: imageItems[index % imageItems.length].links[0].href
-        }));
-        setLocations(updatedLocations);
-      } else {
-        // Fallback to old URLs if API fails
-        const fallbackLocations = initialLocations.map(loc => ({
-            ...loc,
-            imageUrl: 'https://images.unsplash.com/photo-1446776811953-b23d5795b4e7?w=800' // A generic fallback
-        }));
-        setLocations(fallbackLocations);
-      }
+      setLocations(locationsWithCorrectImages);
     };
 
-    fetchNasaData();
+    initializeLocations();
   }, []);
 
 
