@@ -8,27 +8,13 @@ import ProgressTracker from './ProgressTracker';
 import LunarSimulation from './LunarSimulation';
 
 const NBLContainer = styled.div`
-  background-image: url(${props => props.bgImage});
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
+  background: #0a0a1a;
   min-height: 100vh;
   padding: 100px 2rem 2rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   position: relative;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.6);
-    z-index: 1;
-  }
   
   & > * {
     position: relative;
