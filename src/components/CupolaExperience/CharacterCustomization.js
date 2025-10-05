@@ -26,22 +26,42 @@ const CharacterPreview = styled.div`
   margin-bottom: 1rem;
 `;
 
+const getAstronautEmoji = (character) => {
+  const { skinTone, helmet } = character;
+  
+  // Base emoji based on skin tone
+  let emoji;
+  switch(skinTone) {
+    case 'dark': emoji = '👨🏿' + (helmet ? '🚀' : ''); break;
+    case 'medium': emoji = '👨🏽' + (helmet ? '🚀' : ''); break;
+    default: emoji = '👨' + (helmet ? '🚀' : '');
+  }
+  
+  return emoji;
+};
+
 const AstronautFigure = styled.div`
   font-size: 4rem;
   filter: ${props => {
     const filters = [];
     
-    // Skin tone filter
-    if (props.skinTone === 'dark') filters.push('hue-rotate(30deg) saturate(1.2)');
-    if (props.skinTone === 'medium') filters.push('hue-rotate(15deg) saturate(1.1)');
+    // Suit color filter - only apply when helmet is on
+    if (props.helmet) {
+      if (props.suitColor === 'orange') filters.push('sepia(1) saturate(2) hue-rotate(15deg)');
+      if (props.suitColor === 'blue') filters.push('sepia(1) saturate(2) hue-rotate(200deg)');
+    }
     
-    // Suit color filter
-    if (props.suitColor === 'orange') filters.push('sepia(1) saturate(2) hue-rotate(15deg)');
-    if (props.suitColor === 'blue') filters.push('sepia(1) saturate(2) hue-rotate(200deg)');
+    // Hair color filter - only when helmet is off
+    if (!props.helmet) {
+      if (props.hairColor === 'black') filters.push('brightness(0.7)');
+      if (props.hairColor === 'blonde') filters.push('brightness(1.4) saturate(1.5) hue-rotate(10deg)');
+      if (props.hairColor === 'red') filters.push('hue-rotate(-20deg) saturate(1.5)');
+    }
     
     return filters.join(' ') || 'none';
   }};
-  transition: filter 0.3s ease;
+  transition: all 0.3s ease;
+  opacity: ${props => props.helmet ? 1 : 0.8};
 `;
 
 const CustomizationGroup = styled.div`
@@ -104,10 +124,19 @@ const ToggleButton = styled(motion.button)`
 
 const CharacterCustomization = ({ character, setCharacter }) => {
   const updateCharacter = (property, value) => {
-    setCharacter(prev => ({
-      ...prev,
-      [property]: value
-    }));
+    setCharacter(prev => {
+      const newCharacter = {
+        ...prev,
+        [property]: value
+      };
+      
+      // If helmet is turned off, ensure suit color is visible
+      if (property === 'helmet' && !value) {
+        newCharacter.suitColor = 'white';
+      }
+      
+      return newCharacter;
+    });
   };
 
   const skinToneOptions = [
@@ -134,12 +163,30 @@ const CharacterCustomization = ({ character, setCharacter }) => {
       <SectionTitle>Customize Your Astronaut</SectionTitle>
       
       <CharacterPreview>
-        <AstronautFigure 
-          skinTone={character.skinTone}
-          suitColor={character.suitColor}
-        >
-          {character.helmet ? '👨‍🚀' : '👨'}
-        </AstronautFigure>
+        <div style={{ position: 'relative', textAlign: 'center' }}>
+          <AstronautFigure 
+            skinTone={character.skinTone}
+            suitColor={character.suitColor}
+          >
+            {getAstronautEmoji(character)}
+          </AstronautFigure>
+          {!character.helmet && (
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              fontSize: '1rem',
+              background: 'rgba(0,0,0,0.7)',
+              padding: '0.25rem 0.5rem',
+              borderRadius: '10px',
+              color: '#fff',
+              whiteSpace: 'nowrap'
+            }}>
+              Helmet Off
+            </div>
+          )}
+        </div>
       </CharacterPreview>
 
       <CustomizationGroup>
